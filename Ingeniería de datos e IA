@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de Proyectos Ágiles</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .card-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .modal-backdrop {
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease-out;
+        }
+        
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="w-full h-full overflow-auto"><!-- Header -->
+   <header class="w-full py-6 px-6 shadow-md">
+    <div class="max-w-7xl mx-auto">
+     <h1 id="titulo-principal" class="text-4xl font-bold mb-2">Gestor de Proyectos Ágiles</h1>
+     <p id="subtitulo" class="text-xl opacity-90">Ingeniería en Ciencia de Datos e IA</p>
+    </div>
+   </header><!-- Main Content -->
+   <main class="w-full px-6 py-8">
+    <div class="max-w-7xl mx-auto"><!-- Action Bar -->
+     <div class="mb-6 space-y-4"><!-- Primera fila: Botones de acción principales -->
+      <div class="flex flex-wrap gap-3 items-center"><button id="btn-nueva-tarea" class="px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> <span id="texto-btn-nueva">+ Nueva Tarea</span> </button> <button id="btn-vista-kanban" class="px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> 📋 Vista Kanban </button> <button id="btn-vista-lista" class="px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> 📝 Vista Lista </button> <button id="btn-exportar" class="px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> 💾 Exportar CSV </button> <button id="btn-completar-todas" class="px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> ✅ Completar Filtradas </button> <button id="btn-eliminar-completadas" class="px-6 py-3 rounded-lg font-semibold border-2 hover:shadow-md transition-all"> 🗑️ Limpiar Completadas </button>
+      </div><!-- Segunda fila: Ordenamiento y filtros -->
+      <div class="flex flex-wrap gap-3 items-center justify-between">
+       <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex items-center gap-2"><label class="font-medium text-sm">🔽 Ordenar:</label> <select id="ordenar-por" class="px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"> <option value="creado-desc">Más Recientes</option> <option value="creado-asc">Más Antiguos</option> <option value="nombre-asc">Nombre (A-Z)</option> <option value="nombre-desc">Nombre (Z-A)</option> <option value="prioridad">Prioridad Alta</option> <option value="progreso-asc">Menor Progreso</option> <option value="progreso-desc">Mayor Progreso</option> <option value="fecha-fin">Fecha Límite</option> </select>
+        </div>
+        <div class="flex items-center gap-2"><label id="label-estado" class="font-medium text-sm">Estado:</label> <select id="filtro-estado" class="px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"> <option value="">Todos</option> <option value="Por Hacer">Por Hacer</option> <option value="En Progreso">En Progreso</option> <option value="Completado">Completado</option> </select>
+        </div>
+        <div class="flex items-center gap-2"><label id="label-prioridad" class="font-medium text-sm">Prioridad:</label> <select id="filtro-prioridad" class="px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"> <option value="">Todas</option> <option value="Alta">Alta</option> <option value="Media">Media</option> <option value="Baja">Baja</option> </select>
+        </div><button id="btn-limpiar-filtros" class="px-4 py-2 rounded-lg font-semibold border-2 hover:shadow-md transition-all"> 🔄 Limpiar Filtros </button>
+       </div><input type="text" id="buscar" placeholder="🔍 Buscar tareas..." class="px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2 w-64">
+      </div>
+     </div><!-- Estadísticas -->
+     <div id="estadisticas" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="p-4 rounded-lg shadow-md">
+       <div class="text-sm opacity-80 mb-1">
+        Total Tareas
+       </div>
+       <div id="stat-total" class="text-3xl font-bold">
+        0
+       </div>
+      </div>
+      <div class="p-4 rounded-lg shadow-md">
+       <div class="text-sm opacity-80 mb-1">
+        Por Hacer
+       </div>
+       <div id="stat-por-hacer" class="text-3xl font-bold">
+        0
+       </div>
+      </div>
+      <div class="p-4 rounded-lg shadow-md">
+       <div class="text-sm opacity-80 mb-1">
+        En Progreso
+       </div>
+       <div id="stat-progreso" class="text-3xl font-bold">
+        0
+       </div>
+      </div>
+      <div class="p-4 rounded-lg shadow-md">
+       <div class="text-sm opacity-80 mb-1">
+        Completadas
+       </div>
+       <div id="stat-completado" class="text-3xl font-bold">
+        0
+       </div>
+      </div>
+     </div><!-- Vista Kanban -->
+     <div id="vista-kanban" class="grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+      <div class="kanban-columna">
+       <div class="p-4 rounded-t-lg font-bold text-lg flex items-center justify-between"><span>📝 Por Hacer</span> <span id="count-por-hacer" class="px-3 py-1 rounded-full text-sm">0</span>
+       </div>
+       <div id="kanban-por-hacer" class="min-h-[500px] p-4 space-y-4 rounded-b-lg"><!-- Tareas por hacer -->
+       </div>
+      </div>
+      <div class="kanban-columna">
+       <div class="p-4 rounded-t-lg font-bold text-lg flex items-center justify-between"><span>🔄 En Progreso</span> <span id="count-en-progreso" class="px-3 py-1 rounded-full text-sm">0</span>
+       </div>
+       <div id="kanban-en-progreso" class="min-h-[500px] p-4 space-y-4 rounded-b-lg"><!-- Tareas en progreso -->
+       </div>
+      </div>
+      <div class="kanban-columna">
+       <div class="p-4 rounded-t-lg font-bold text-lg flex items-center justify-between"><span>✅ Completado</span> <span id="count-completado" class="px-3 py-1 rounded-full text-sm">0</span>
+       </div>
+       <div id="kanban-completado" class="min-h-[500px] p-4 space-y-4 rounded-b-lg"><!-- Tareas completadas -->
+       </div>
+      </div>
+     </div><!-- Lista de Tareas -->
+     <div id="lista-tareas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><!-- Las tareas se renderizarán aquí -->
+     </div><!-- Mensaje cuando no hay tareas -->
+     <div id="mensaje-vacio" class="text-center py-16 hidden">
+      <svg class="w-24 h-24 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <p class="text-xl opacity-70">No hay tareas todavía</p>
+      <p class="opacity-50 mt-2">Crea tu primera tarea para comenzar</p>
+     </div>
+    </div>
+   </main><!-- Modal para crear/editar tarea -->
+   <div id="modal" class="fixed inset-0 hidden items-center justify-center z-50 p-4">
+    <div class="absolute inset-0 modal-backdrop" style="background-color: rgba(0,0,0,0.5)"></div>
+    <div class="relative rounded-lg shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+     <div class="flex justify-between items-center mb-6">
+      <h2 id="modal-titulo" class="text-2xl font-bold">Nueva Tarea</h2><button id="btn-cerrar-modal" class="text-2xl hover:opacity-70 transition-opacity">×</button>
+     </div>
+     <form id="form-tarea" class="space-y-4">
+      <div><label class="block font-semibold mb-2">Nombre de la Tarea *</label> <input type="text" id="input-nombre" required class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2">
+      </div>
+      <div><label class="block font-semibold mb-2">Descripción</label> <textarea id="input-descripcion" rows="3" class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"></textarea>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block font-semibold mb-2">Estado *</label> <select id="input-estado" required class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"> <option value="Por Hacer">Por Hacer</option> <option value="En Progreso">En Progreso</option> <option value="Completado">Completado</option> </select>
+       </div>
+       <div><label class="block font-semibold mb-2">Prioridad *</label> <select id="input-prioridad" required class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"> <option value="Baja">Baja</option> <option value="Media">Media</option> <option value="Alta">Alta</option> </select>
+       </div>
+      </div>
+      <div><label class="block font-semibold mb-2">Responsable *</label> <input type="text" id="input-responsable" required class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2">
+      </div>
+      <div><label class="block font-semibold mb-2">Proyecto</label> <input type="text" id="input-proyecto" class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2">
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block font-semibold mb-2">Fecha Inicio</label> <input type="date" id="input-fecha-inicio" class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2">
+       </div>
+       <div><label class="block font-semibold mb-2">Fecha Fin</label> <input type="date" id="input-fecha-fin" class="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2">
+       </div>
+      </div>
+      <div><label class="block font-semibold mb-2">Progreso (%)</label>
+       <div class="flex items-center gap-4"><input type="range" id="input-progreso" min="0" max="100" value="0" class="flex-1"> <span id="progreso-valor" class="font-bold text-xl w-16 text-center">0%</span>
+       </div>
+      </div>
+      <div class="flex gap-3 pt-4"><button type="submit" id="btn-guardar" class="flex-1 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"> <span id="texto-btn-guardar">Guardar</span> </button> <button type="button" id="btn-cancelar" class="px-6 py-3 rounded-lg font-semibold border-2 hover:shadow-md transition-all"> Cancelar </button>
+      </div>
+     </form>
+    </div>
+   </div><!-- Toast para notificaciones -->
+   <div id="toast" class="fixed bottom-6 right-6 px-6 py-4 rounded-lg shadow-xl hidden z-50 transform transition-all">
+    <p id="toast-mensaje" class="font-semibold"></p>
+   </div>
+  </div>
+  <script>
+        const defaultConfig = {
+            color_fondo: "#f0f4f8",
+            color_superficie: "#ffffff",
+            color_texto: "#1e293b",
+            color_primario: "#3b82f6",
+            color_secundario: "#64748b",
+            fuente: "Inter",
+            tamano_fuente: 16,
+            titulo_principal: "Gestor de Proyectos Ágiles",
+            subtitulo: "Ingeniería en Ciencia de Datos e IA",
+            boton_nueva_tarea: "Nueva Tarea",
+            boton_guardar: "Guardar",
+            texto_filtro_estado: "Estado",
+            texto_filtro_prioridad: "Prioridad"
+        };
+
+        let tareas = [];
+        let tareaEditando = null;
+        let filtroEstado = "";
+        let filtroPrioridad = "";
+        let busqueda = "";
+        let ordenamiento = "creado-desc";
+        let vistaActual = "lista"; // "lista" o "kanban"
+
+        const dataHandler = {
+            onDataChanged(data) {
+                tareas = data;
+                renderizarTareas();
+                actualizarEstadisticas();
+            }
+        };
+
+        async function inicializarApp() {
+            if (window.elementSdk) {
+                await window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange: async (config) => {
+                        const baseFont = config.fuente || defaultConfig.fuente;
+                        const baseFontStack = 'system-ui, -apple-system, sans-serif';
+                        const fontSize = config.tamano_fuente || defaultConfig.tamano_fuente;
+                        
+                        document.body.style.backgroundColor = config.color_fondo || defaultConfig.color_fondo;
+                        document.body.style.color = config.color_texto || defaultConfig.color_texto;
+                        document.body.style.fontFamily = `${baseFont}, ${baseFontStack}`;
+                        document.body.style.fontSize = `${fontSize}px`;
+                        
+                        const header = document.querySelector('header');
+                        header.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+                        header.style.color = config.color_texto || defaultConfig.color_texto;
+                        
+                        document.getElementById('titulo-principal').textContent = config.titulo_principal || defaultConfig.titulo_principal;
+                        document.getElementById('titulo-principal').style.fontSize = `${fontSize * 2}px`;
+                        document.getElementById('subtitulo').textContent = config.subtitulo || defaultConfig.subtitulo;
+                        document.getElementById('subtitulo').style.fontSize = `${fontSize * 1.25}px`;
+                        
+                        document.getElementById('texto-btn-nueva').textContent = config.boton_nueva_tarea || defaultConfig.boton_nueva_tarea;
+                        document.getElementById('texto-btn-guardar').textContent = config.boton_guardar || defaultConfig.boton_guardar;
+                        document.getElementById('label-estado').textContent = config.texto_filtro_estado || defaultConfig.texto_filtro_estado + ":";
+                        document.getElementById('label-prioridad').textContent = config.texto_filtro_prioridad || defaultConfig.texto_filtro_prioridad + ":";
+                        
+                        const btnNueva = document.getElementById('btn-nueva-tarea');
+                        btnNueva.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                        btnNueva.style.color = config.color_superficie || defaultConfig.color_superficie;
+                        
+                        const btnGuardar = document.getElementById('btn-guardar');
+                        btnGuardar.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                        btnGuardar.style.color = config.color_superficie || defaultConfig.color_superficie;
+                        
+                        // Estilizar botones de acción
+                        const botonesAccion = ['btn-vista-kanban', 'btn-vista-lista', 'btn-exportar', 'btn-completar-todas'];
+                        botonesAccion.forEach(id => {
+                            const btn = document.getElementById(id);
+                            if (btn) {
+                                btn.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                                btn.style.color = config.color_superficie || defaultConfig.color_superficie;
+                            }
+                        });
+                        
+                        const btnEliminarCompletadas = document.getElementById('btn-eliminar-completadas');
+                        btnEliminarCompletadas.style.borderColor = config.color_secundario || defaultConfig.color_secundario;
+                        btnEliminarCompletadas.style.color = config.color_texto || defaultConfig.color_texto;
+                        
+                        const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+                        btnLimpiarFiltros.style.borderColor = config.color_secundario || defaultConfig.color_secundario;
+                        btnLimpiarFiltros.style.color = config.color_texto || defaultConfig.color_texto;
+                        
+                        const cards = document.querySelectorAll('#estadisticas > div');
+                        cards.forEach(card => {
+                            card.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+                            card.style.color = config.color_texto || defaultConfig.color_texto;
+                        });
+                        
+                        const selects = document.querySelectorAll('select, input');
+                        selects.forEach(el => {
+                            el.style.borderColor = config.color_secundario || defaultConfig.color_secundario;
+                            el.style.color = config.color_texto || defaultConfig.color_texto;
+                        });
+                        
+                        const modalContent = document.querySelector('#modal > div:last-child');
+                        if (modalContent) {
+                            modalContent.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+                            modalContent.style.color = config.color_texto || defaultConfig.color_texto;
+                        }
+                        
+                        renderizarTareas();
+                    },
+                    mapToCapabilities: (config) => ({
+                        recolorables: [
+                            {
+                                get: () => config.color_fondo || defaultConfig.color_fondo,
+                                set: (value) => {
+                                    window.elementSdk.config.color_fondo = value;
+                                    window.elementSdk.setConfig({ color_fondo: value });
+                                }
+                            },
+                            {
+                                get: () => config.color_superficie || defaultConfig.color_superficie,
+                                set: (value) => {
+                                    window.elementSdk.config.color_superficie = value;
+                                    window.elementSdk.setConfig({ color_superficie: value });
+                                }
+                            },
+                            {
+                                get: () => config.color_texto || defaultConfig.color_texto,
+                                set: (value) => {
+                                    window.elementSdk.config.color_texto = value;
+                                    window.elementSdk.setConfig({ color_texto: value });
+                                }
+                            },
+                            {
+                                get: () => config.color_primario || defaultConfig.color_primario,
+                                set: (value) => {
+                                    window.elementSdk.config.color_primario = value;
+                                    window.elementSdk.setConfig({ color_primario: value });
+                                }
+                            },
+                            {
+                                get: () => config.color_secundario || defaultConfig.color_secundario,
+                                set: (value) => {
+                                    window.elementSdk.config.color_secundario = value;
+                                    window.elementSdk.setConfig({ color_secundario: value });
+                                }
+                            }
+                        ],
+                        borderables: [],
+                        fontEditable: {
+                            get: () => config.fuente || defaultConfig.fuente,
+                            set: (value) => {
+                                window.elementSdk.config.fuente = value;
+                                window.elementSdk.setConfig({ fuente: value });
+                            }
+                        },
+                        fontSizeable: {
+                            get: () => config.tamano_fuente || defaultConfig.tamano_fuente,
+                            set: (value) => {
+                                window.elementSdk.config.tamano_fuente = value;
+                                window.elementSdk.setConfig({ tamano_fuente: value });
+                            }
+                        }
+                    }),
+                    mapToEditPanelValues: (config) => new Map([
+                        ["titulo_principal", config.titulo_principal || defaultConfig.titulo_principal],
+                        ["subtitulo", config.subtitulo || defaultConfig.subtitulo],
+                        ["boton_nueva_tarea", config.boton_nueva_tarea || defaultConfig.boton_nueva_tarea],
+                        ["boton_guardar", config.boton_guardar || defaultConfig.boton_guardar],
+                        ["texto_filtro_estado", config.texto_filtro_estado || defaultConfig.texto_filtro_estado],
+                        ["texto_filtro_prioridad", config.texto_filtro_prioridad || defaultConfig.texto_filtro_prioridad]
+                    ])
+                });
+            }
+
+            if (window.dataSdk) {
+                const initResult = await window.dataSdk.init(dataHandler);
+                if (!initResult.isOk) {
+                    mostrarToast("Error al inicializar el almacenamiento", "error");
+                }
+            }
+            
+            configurarEventos();
+            aplicarEstilosIniciales();
+        }
+
+        function aplicarEstilosIniciales() {
+            document.body.style.backgroundColor = defaultConfig.color_fondo;
+            document.body.style.color = defaultConfig.color_texto;
+            document.body.style.fontFamily = `${defaultConfig.fuente}, system-ui, -apple-system, sans-serif`;
+            document.body.style.fontSize = `${defaultConfig.tamano_fuente}px`;
+            
+            const header = document.querySelector('header');
+            header.style.backgroundColor = defaultConfig.color_superficie;
+            
+            const btnNueva = document.getElementById('btn-nueva-tarea');
+            btnNueva.style.backgroundColor = defaultConfig.color_primario;
+            btnNueva.style.color = defaultConfig.color_superficie;
+            
+            const btnGuardar = document.getElementById('btn-guardar');
+            btnGuardar.style.backgroundColor = defaultConfig.color_primario;
+            btnGuardar.style.color = defaultConfig.color_superficie;
+            
+            // Botones de acción
+            const botonesAccion = ['btn-vista-kanban', 'btn-vista-lista', 'btn-exportar', 'btn-completar-todas'];
+            botonesAccion.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.backgroundColor = defaultConfig.color_primario;
+                    btn.style.color = defaultConfig.color_superficie;
+                }
+            });
+            
+            // Botones secundarios
+            const btnEliminarCompletadas = document.getElementById('btn-eliminar-completadas');
+            btnEliminarCompletadas.style.borderColor = defaultConfig.color_secundario;
+            btnEliminarCompletadas.style.color = defaultConfig.color_texto;
+            
+            const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+            btnLimpiarFiltros.style.borderColor = defaultConfig.color_secundario;
+            btnLimpiarFiltros.style.color = defaultConfig.color_texto;
+            
+            alternarVista();
+        }
+
+        function configurarEventos() {
+            document.getElementById('btn-nueva-tarea').addEventListener('click', abrirModalNuevaTarea);
+            document.getElementById('btn-cerrar-modal').addEventListener('click', cerrarModal);
+            document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
+            document.getElementById('form-tarea').addEventListener('submit', guardarTarea);
+            
+            // Filtros y búsqueda
+            document.getElementById('filtro-estado').addEventListener('change', (e) => {
+                filtroEstado = e.target.value;
+                renderizarTareas();
+            });
+            document.getElementById('filtro-prioridad').addEventListener('change', (e) => {
+                filtroPrioridad = e.target.value;
+                renderizarTareas();
+            });
+            document.getElementById('buscar').addEventListener('input', (e) => {
+                busqueda = e.target.value.toLowerCase();
+                renderizarTareas();
+            });
+            
+            // Ordenamiento
+            document.getElementById('ordenar-por').addEventListener('change', (e) => {
+                ordenamiento = e.target.value;
+                renderizarTareas();
+            });
+            
+            // Vistas
+            document.getElementById('btn-vista-kanban').addEventListener('click', () => {
+                vistaActual = "kanban";
+                alternarVista();
+                renderizarTareas();
+            });
+            document.getElementById('btn-vista-lista').addEventListener('click', () => {
+                vistaActual = "lista";
+                alternarVista();
+                renderizarTareas();
+            });
+            
+            // Acciones masivas
+            document.getElementById('btn-limpiar-filtros').addEventListener('click', limpiarFiltros);
+            document.getElementById('btn-exportar').addEventListener('click', exportarCSV);
+            document.getElementById('btn-completar-todas').addEventListener('click', completarTodasFiltradas);
+            document.getElementById('btn-eliminar-completadas').addEventListener('click', eliminarCompletadas);
+            
+            document.getElementById('input-progreso').addEventListener('input', (e) => {
+                document.getElementById('progreso-valor').textContent = e.target.value + '%';
+            });
+            
+            document.getElementById('modal').addEventListener('click', (e) => {
+                if (e.target.id === 'modal') cerrarModal();
+            });
+        }
+
+        function abrirModalNuevaTarea() {
+            tareaEditando = null;
+            document.getElementById('modal-titulo').textContent = 'Nueva Tarea';
+            document.getElementById('form-tarea').reset();
+            document.getElementById('progreso-valor').textContent = '0%';
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function abrirModalEditarTarea(tarea) {
+            tareaEditando = tarea;
+            document.getElementById('modal-titulo').textContent = 'Editar Tarea';
+            document.getElementById('input-nombre').value = tarea.nombre;
+            document.getElementById('input-descripcion').value = tarea.descripcion || '';
+            document.getElementById('input-estado').value = tarea.estado;
+            document.getElementById('input-prioridad').value = tarea.prioridad;
+            document.getElementById('input-responsable').value = tarea.responsable;
+            document.getElementById('input-proyecto').value = tarea.proyecto || '';
+            document.getElementById('input-fecha-inicio').value = tarea.fecha_inicio || '';
+            document.getElementById('input-fecha-fin').value = tarea.fecha_fin || '';
+            document.getElementById('input-progreso').value = tarea.progreso || 0;
+            document.getElementById('progreso-valor').textContent = (tarea.progreso || 0) + '%';
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('modal').classList.remove('flex');
+            tareaEditando = null;
+        }
+
+        async function guardarTarea(e) {
+            e.preventDefault();
+            
+            if (tareas.length >= 999 && !tareaEditando) {
+                mostrarToast("Límite de 999 tareas alcanzado. Por favor elimina algunas tareas primero.", "error");
+                return;
+            }
+            
+            const btnGuardar = document.getElementById('btn-guardar');
+            const textoOriginal = btnGuardar.innerHTML;
+            btnGuardar.disabled = true;
+            btnGuardar.innerHTML = '<span>Guardando...</span>';
+            
+            const tareaNueva = {
+                nombre: document.getElementById('input-nombre').value,
+                descripcion: document.getElementById('input-descripcion').value,
+                estado: document.getElementById('input-estado').value,
+                prioridad: document.getElementById('input-prioridad').value,
+                responsable: document.getElementById('input-responsable').value,
+                proyecto: document.getElementById('input-proyecto').value,
+                fecha_inicio: document.getElementById('input-fecha-inicio').value,
+                fecha_fin: document.getElementById('input-fecha-fin').value,
+                progreso: parseInt(document.getElementById('input-progreso').value)
+            };
+            
+            if (tareaEditando) {
+                const tareaActualizada = { ...tareaEditando, ...tareaNueva };
+                const result = await window.dataSdk.update(tareaActualizada);
+                if (result.isOk) {
+                    mostrarToast("Tarea actualizada exitosamente", "success");
+                    cerrarModal();
+                } else {
+                    mostrarToast("Error al actualizar la tarea", "error");
+                }
+            } else {
+                tareaNueva.id = Date.now().toString();
+                tareaNueva.creado = new Date().toISOString();
+                
+                const result = await window.dataSdk.create(tareaNueva);
+                if (result.isOk) {
+                    mostrarToast("Tarea creada exitosamente", "success");
+                    cerrarModal();
+                } else {
+                    mostrarToast("Error al crear la tarea", "error");
+                }
+            }
+            
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = textoOriginal;
+        }
+
+        async function eliminarTarea(tarea, boton) {
+            const textoOriginal = boton.textContent;
+            boton.textContent = "Confirmar?";
+            boton.style.backgroundColor = "#ef4444";
+            
+            const confirmar = () => {
+                ejecutarEliminacion();
+                limpiar();
+            };
+            
+            const cancelar = () => {
+                limpiar();
+            };
+            
+            const limpiar = () => {
+                boton.textContent = textoOriginal;
+                boton.style.backgroundColor = "";
+                boton.removeEventListener('click', confirmar);
+                document.removeEventListener('click', cancelar);
+            };
+            
+            const ejecutarEliminacion = async () => {
+                boton.disabled = true;
+                boton.textContent = "Eliminando...";
+                
+                const result = await window.dataSdk.delete(tarea);
+                if (result.isOk) {
+                    mostrarToast("Tarea eliminada", "success");
+                } else {
+                    mostrarToast("Error al eliminar la tarea", "error");
+                    boton.disabled = false;
+                }
+            };
+            
+            setTimeout(() => {
+                boton.addEventListener('click', confirmar, { once: true });
+                setTimeout(() => {
+                    document.addEventListener('click', cancelar, { once: true });
+                }, 100);
+            }, 100);
+        }
+
+        function renderizarTareas() {
+            const config = window.elementSdk ? window.elementSdk.config : defaultConfig;
+            const listaTareas = document.getElementById('lista-tareas');
+            const vistaKanban = document.getElementById('vista-kanban');
+            const mensajeVacio = document.getElementById('mensaje-vacio');
+            
+            let tareasFiltradas = tareas.filter(tarea => {
+                const coincideEstado = !filtroEstado || tarea.estado === filtroEstado;
+                const coincidePrioridad = !filtroPrioridad || tarea.prioridad === filtroPrioridad;
+                const coincideBusqueda = !busqueda || 
+                    tarea.nombre.toLowerCase().includes(busqueda) ||
+                    (tarea.descripcion && tarea.descripcion.toLowerCase().includes(busqueda)) ||
+                    tarea.responsable.toLowerCase().includes(busqueda) ||
+                    (tarea.proyecto && tarea.proyecto.toLowerCase().includes(busqueda));
+                
+                return coincideEstado && coincidePrioridad && coincideBusqueda;
+            });
+            
+            // Aplicar ordenamiento
+            tareasFiltradas = ordenarTareas(tareasFiltradas);
+            
+            if (tareasFiltradas.length === 0) {
+                listaTareas.innerHTML = '';
+                vistaKanban.querySelectorAll('[id^="kanban-"]').forEach(col => col.innerHTML = '');
+                mensajeVacio.classList.remove('hidden');
+                return;
+            }
+            
+            mensajeVacio.classList.add('hidden');
+            
+            if (vistaActual === "kanban") {
+                renderizarKanban(tareasFiltradas, config);
+            } else {
+                renderizarLista(tareasFiltradas, config);
+            }
+        }
+        
+        function ordenarTareas(tareas) {
+            const tareasOrdenadas = [...tareas];
+            
+            switch(ordenamiento) {
+                case "creado-desc":
+                    return tareasOrdenadas.sort((a, b) => new Date(b.creado) - new Date(a.creado));
+                case "creado-asc":
+                    return tareasOrdenadas.sort((a, b) => new Date(a.creado) - new Date(b.creado));
+                case "nombre-asc":
+                    return tareasOrdenadas.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                case "nombre-desc":
+                    return tareasOrdenadas.sort((a, b) => b.nombre.localeCompare(a.nombre));
+                case "prioridad":
+                    const prioridadOrden = { "Alta": 1, "Media": 2, "Baja": 3 };
+                    return tareasOrdenadas.sort((a, b) => prioridadOrden[a.prioridad] - prioridadOrden[b.prioridad]);
+                case "progreso-asc":
+                    return tareasOrdenadas.sort((a, b) => a.progreso - b.progreso);
+                case "progreso-desc":
+                    return tareasOrdenadas.sort((a, b) => b.progreso - a.progreso);
+                case "fecha-fin":
+                    return tareasOrdenadas.sort((a, b) => {
+                        if (!a.fecha_fin) return 1;
+                        if (!b.fecha_fin) return -1;
+                        return new Date(a.fecha_fin) - new Date(b.fecha_fin);
+                    });
+                default:
+                    return tareasOrdenadas;
+            }
+        }
+        
+        function alternarVista() {
+            const listaTareas = document.getElementById('lista-tareas');
+            const vistaKanban = document.getElementById('vista-kanban');
+            const btnKanban = document.getElementById('btn-vista-kanban');
+            const btnLista = document.getElementById('btn-vista-lista');
+            const config = window.elementSdk ? window.elementSdk.config : defaultConfig;
+            
+            if (vistaActual === "kanban") {
+                listaTareas.classList.add('hidden');
+                vistaKanban.classList.remove('hidden');
+                btnKanban.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                btnKanban.style.color = config.color_superficie || defaultConfig.color_superficie;
+                btnLista.style.backgroundColor = 'transparent';
+                btnLista.style.color = config.color_texto || defaultConfig.color_texto;
+                btnLista.style.borderColor = config.color_secundario || defaultConfig.color_secundario;
+                btnLista.style.borderWidth = '2px';
+            } else {
+                listaTareas.classList.remove('hidden');
+                vistaKanban.classList.add('hidden');
+                btnLista.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                btnLista.style.color = config.color_superficie || defaultConfig.color_superficie;
+                btnKanban.style.backgroundColor = 'transparent';
+                btnKanban.style.color = config.color_texto || defaultConfig.color_texto;
+                btnKanban.style.borderColor = config.color_secundario || defaultConfig.color_secundario;
+                btnKanban.style.borderWidth = '2px';
+            }
+        }
+        
+        function renderizarKanban(tareasFiltradas, config) {
+            const porHacer = document.getElementById('kanban-por-hacer');
+            const enProgreso = document.getElementById('kanban-en-progreso');
+            const completado = document.getElementById('kanban-completado');
+            
+            porHacer.innerHTML = '';
+            enProgreso.innerHTML = '';
+            completado.innerHTML = '';
+            
+            const tareasEstado = {
+                'Por Hacer': [],
+                'En Progreso': [],
+                'Completado': []
+            };
+            
+            tareasFiltradas.forEach(tarea => {
+                tareasEstado[tarea.estado].push(tarea);
+            });
+            
+            document.getElementById('count-por-hacer').textContent = tareasEstado['Por Hacer'].length;
+            document.getElementById('count-en-progreso').textContent = tareasEstado['En Progreso'].length;
+            document.getElementById('count-completado').textContent = tareasEstado['Completado'].length;
+            
+            tareasEstado['Por Hacer'].forEach(tarea => {
+                porHacer.appendChild(crearTarjetaKanban(tarea, config));
+            });
+            tareasEstado['En Progreso'].forEach(tarea => {
+                enProgreso.appendChild(crearTarjetaKanban(tarea, config));
+            });
+            tareasEstado['Completado'].forEach(tarea => {
+                completado.appendChild(crearTarjetaKanban(tarea, config));
+            });
+            
+            // Aplicar estilos a columnas
+            document.querySelectorAll('.kanban-columna > div:first-child').forEach((header, idx) => {
+                header.style.backgroundColor = config.color_primario || defaultConfig.color_primario;
+                header.style.color = config.color_superficie || defaultConfig.color_superficie;
+                const badge = header.querySelector('span:last-child');
+                badge.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+                badge.style.color = config.color_primario || defaultConfig.color_primario;
+            });
+            
+            document.querySelectorAll('.kanban-columna > div:last-child').forEach(col => {
+                col.style.backgroundColor = `${config.color_secundario || defaultConfig.color_secundario}15`;
+            });
+        }
+        
+        function crearTarjetaKanban(tarea, config) {
+            const div = document.createElement('div');
+            div.className = 'task-card card-enter p-4 rounded-lg shadow-md';
+            div.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+            
+            const colorPrioridad = {
+                'Alta': '#ef4444',
+                'Media': '#f59e0b',
+                'Baja': '#10b981'
+            };
+            
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <h4 class="font-bold flex-1" style="color: ${config.color_texto || defaultConfig.color_texto}">${tarea.nombre}</h4>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold ml-2" style="background-color: ${colorPrioridad[tarea.prioridad]}; color: white;">
+                        ${tarea.prioridad}
+                    </span>
+                </div>
+                
+                <div class="text-sm mb-3" style="color: ${config.color_texto || defaultConfig.color_texto}">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span>👤</span>
+                        <span>${tarea.responsable}</span>
+                    </div>
+                    ${tarea.proyecto ? `
+                    <div class="flex items-center gap-2">
+                        <span>📁</span>
+                        <span>${tarea.proyecto}</span>
+                    </div>` : ''}
+                </div>
+                
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs mb-1" style="color: ${config.color_texto || defaultConfig.color_texto}">
+                        <span>Progreso</span>
+                        <span>${tarea.progreso}%</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full" style="background-color: ${config.color_secundario || defaultConfig.color_secundario}33">
+                        <div class="progress-bar h-full rounded-full" style="width: ${tarea.progreso}%; background-color: ${config.color_primario || defaultConfig.color_primario}"></div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 text-sm">
+                    <button class="btn-editar-kanban flex-1 px-3 py-1.5 rounded font-semibold" style="background-color: ${config.color_primario || defaultConfig.color_primario}; color: ${config.color_superficie || defaultConfig.color_superficie}">
+                        ✏️
+                    </button>
+                    <button class="btn-mover px-3 py-1.5 rounded font-semibold border" style="border-color: ${config.color_secundario || defaultConfig.color_secundario}; color: ${config.color_texto || defaultConfig.color_texto}">
+                        ➡️
+                    </button>
+                    <button class="btn-eliminar-kanban px-3 py-1.5 rounded font-semibold border" style="border-color: ${config.color_secundario || defaultConfig.color_secundario}; color: ${config.color_texto || defaultConfig.color_texto}">
+                        🗑️
+                    </button>
+                </div>
+            `;
+            
+            div.querySelector('.btn-editar-kanban').addEventListener('click', () => abrirModalEditarTarea(tarea));
+            div.querySelector('.btn-mover').addEventListener('click', () => moverTarea(tarea));
+            div.querySelector('.btn-eliminar-kanban').addEventListener('click', (e) => eliminarTarea(tarea, e.target));
+            
+            return div;
+        }
+        
+        async function moverTarea(tarea) {
+            const estados = ['Por Hacer', 'En Progreso', 'Completado'];
+            const indiceActual = estados.indexOf(tarea.estado);
+            const nuevoEstado = estados[(indiceActual + 1) % estados.length];
+            
+            const tareaActualizada = { ...tarea, estado: nuevoEstado };
+            if (nuevoEstado === 'Completado') {
+                tareaActualizada.progreso = 100;
+            }
+            
+            const result = await window.dataSdk.update(tareaActualizada);
+            if (result.isOk) {
+                mostrarToast(`Tarea movida a ${nuevoEstado}`, "success");
+            } else {
+                mostrarToast("Error al mover la tarea", "error");
+            }
+        }
+        
+        function renderizarLista(tareasFiltradas, config) {
+            const listaTareas = document.getElementById('lista-tareas');
+            
+            const tareasExistentes = new Map(
+                [...listaTareas.children].map(el => [el.dataset.tareaId, el])
+            );
+            
+            tareasFiltradas.forEach(tarea => {
+                if (tareasExistentes.has(tarea.__backendId)) {
+                    actualizarTarjetaTarea(tareasExistentes.get(tarea.__backendId), tarea, config);
+                    tareasExistentes.delete(tarea.__backendId);
+                } else {
+                    listaTareas.appendChild(crearTarjetaTarea(tarea, config));
+                }
+            });
+            
+            tareasExistentes.forEach(el => el.remove());
+        }
+        
+        function limpiarFiltros() {
+            filtroEstado = "";
+            filtroPrioridad = "";
+            busqueda = "";
+            ordenamiento = "creado-desc";
+            
+            document.getElementById('filtro-estado').value = "";
+            document.getElementById('filtro-prioridad').value = "";
+            document.getElementById('buscar').value = "";
+            document.getElementById('ordenar-por').value = "creado-desc";
+            
+            renderizarTareas();
+            mostrarToast("Filtros limpiados", "success");
+        }
+        
+        function exportarCSV() {
+            if (tareas.length === 0) {
+                mostrarToast("No hay tareas para exportar", "error");
+                return;
+            }
+            
+            const headers = ['Nombre', 'Descripción', 'Estado', 'Prioridad', 'Responsable', 'Proyecto', 'Fecha Inicio', 'Fecha Fin', 'Progreso'];
+            const csvContent = [
+                headers.join(','),
+                ...tareas.map(tarea => [
+                    `"${tarea.nombre}"`,
+                    `"${tarea.descripcion || ''}"`,
+                    tarea.estado,
+                    tarea.prioridad,
+                    `"${tarea.responsable}"`,
+                    `"${tarea.proyecto || ''}"`,
+                    tarea.fecha_inicio || '',
+                    tarea.fecha_fin || '',
+                    tarea.progreso
+                ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `tareas_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            mostrarToast("CSV exportado exitosamente", "success");
+        }
+        
+        async function completarTodasFiltradas() {
+            const tareasFiltradas = tareas.filter(tarea => {
+                const coincideEstado = !filtroEstado || tarea.estado === filtroEstado;
+                const coincidePrioridad = !filtroPrioridad || tarea.prioridad === filtroPrioridad;
+                const coincideBusqueda = !busqueda || 
+                    tarea.nombre.toLowerCase().includes(busqueda) ||
+                    (tarea.descripcion && tarea.descripcion.toLowerCase().includes(busqueda)) ||
+                    tarea.responsable.toLowerCase().includes(busqueda) ||
+                    (tarea.proyecto && tarea.proyecto.toLowerCase().includes(busqueda));
+                
+                return coincideEstado && coincidePrioridad && coincideBusqueda && tarea.estado !== 'Completado';
+            });
+            
+            if (tareasFiltradas.length === 0) {
+                mostrarToast("No hay tareas pendientes para completar", "error");
+                return;
+            }
+            
+            const btn = document.getElementById('btn-completar-todas');
+            btn.disabled = true;
+            btn.textContent = "Completando...";
+            
+            let completadas = 0;
+            for (const tarea of tareasFiltradas) {
+                const tareaActualizada = { ...tarea, estado: 'Completado', progreso: 100 };
+                const result = await window.dataSdk.update(tareaActualizada);
+                if (result.isOk) completadas++;
+            }
+            
+            btn.disabled = false;
+            btn.textContent = "✅ Completar Filtradas";
+            mostrarToast(`${completadas} tareas completadas`, "success");
+        }
+        
+        async function eliminarCompletadas() {
+            const tareasCompletadas = tareas.filter(t => t.estado === 'Completado');
+            
+            if (tareasCompletadas.length === 0) {
+                mostrarToast("No hay tareas completadas para eliminar", "error");
+                return;
+            }
+            
+            const btn = document.getElementById('btn-eliminar-completadas');
+            const textoOriginal = btn.textContent;
+            btn.textContent = "¿Confirmar eliminación?";
+            btn.style.backgroundColor = "#ef4444";
+            btn.style.color = "white";
+            
+            const confirmar = async () => {
+                btn.disabled = true;
+                btn.textContent = "Eliminando...";
+                
+                let eliminadas = 0;
+                for (const tarea of tareasCompletadas) {
+                    const result = await window.dataSdk.delete(tarea);
+                    if (result.isOk) eliminadas++;
+                }
+                
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+                btn.style.backgroundColor = "";
+                btn.style.color = "";
+                mostrarToast(`${eliminadas} tareas eliminadas`, "success");
+                limpiar();
+            };
+            
+            const cancelar = () => {
+                limpiar();
+            };
+            
+            const limpiar = () => {
+                btn.textContent = textoOriginal;
+                btn.style.backgroundColor = "";
+                btn.style.color = "";
+                btn.removeEventListener('click', confirmar);
+                document.removeEventListener('click', cancelar);
+            };
+            
+            setTimeout(() => {
+                btn.addEventListener('click', confirmar, { once: true });
+                setTimeout(() => {
+                    document.addEventListener('click', cancelar, { once: true });
+                }, 100);
+            }, 100);
+        }
+
+        function crearTarjetaTarea(tarea, config) {
+            const div = document.createElement('div');
+            div.className = 'task-card card-enter p-6 rounded-lg shadow-md';
+            div.dataset.tareaId = tarea.__backendId;
+            div.style.backgroundColor = config.color_superficie || defaultConfig.color_superficie;
+            
+            actualizarTarjetaTarea(div, tarea, config);
+            
+            return div;
+        }
+
+        function actualizarTarjetaTarea(elemento, tarea, config) {
+            const colorPrioridad = {
+                'Alta': '#ef4444',
+                'Media': '#f59e0b',
+                'Baja': '#10b981'
+            };
+            
+            const colorEstado = {
+                'Por Hacer': '#6b7280',
+                'En Progreso': '#3b82f6',
+                'Completado': '#10b981'
+            };
+            
+            elemento.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-bold mb-1" style="color: ${config.color_texto || defaultConfig.color_texto}">${tarea.nombre}</h3>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold" style="background-color: ${colorPrioridad[tarea.prioridad]}; color: white;">
+                            ${tarea.prioridad}
+                        </span>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ml-2" style="background-color: ${colorEstado[tarea.estado]}; color: white;">
+                        ${tarea.estado}
+                    </span>
+                </div>
+                
+                ${tarea.descripcion ? `<p class="mb-3 opacity-80" style="color: ${config.color_texto || defaultConfig.color_texto}">${tarea.descripcion}</p>` : ''}
+                
+                <div class="space-y-2 mb-4 text-sm" style="color: ${config.color_texto || defaultConfig.color_texto}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold">👤 Responsable:</span>
+                        <span>${tarea.responsable}</span>
+                    </div>
+                    ${tarea.proyecto ? `
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold">📁 Proyecto:</span>
+                        <span>${tarea.proyecto}</span>
+                    </div>
+                    ` : ''}
+                    ${tarea.fecha_fin ? `
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold">📅 Fecha límite:</span>
+                        <span>${new Date(tarea.fecha_fin).toLocaleDateString()}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1" style="color: ${config.color_texto || defaultConfig.color_texto}">
+                        <span class="font-semibold">Progreso</span>
+                        <span class="font-bold">${tarea.progreso}%</span>
+                    </div>
+                    <div class="w-full h-2 rounded-full" style="background-color: ${config.color_secundario || defaultConfig.color_secundario}33">
+                        <div class="progress-bar h-full rounded-full" style="width: ${tarea.progreso}%; background-color: ${config.color_primario || defaultConfig.color_primario}"></div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button class="btn-editar flex-1 px-4 py-2 rounded-lg font-semibold transition-all" style="background-color: ${config.color_primario || defaultConfig.color_primario}; color: ${config.color_superficie || defaultConfig.color_superficie}">
+                        ✏️ Editar
+                    </button>
+                    <button class="btn-eliminar px-4 py-2 rounded-lg font-semibold border-2 transition-all" style="border-color: ${config.color_secundario || defaultConfig.color_secundario}; color: ${config.color_texto || defaultConfig.color_texto}">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            `;
+            
+            elemento.querySelector('.btn-editar').addEventListener('click', () => abrirModalEditarTarea(tarea));
+            elemento.querySelector('.btn-eliminar').addEventListener('click', (e) => eliminarTarea(tarea, e.target));
+        }
+
+        function actualizarEstadisticas() {
+            document.getElementById('stat-total').textContent = tareas.length;
+            document.getElementById('stat-por-hacer').textContent = tareas.filter(t => t.estado === 'Por Hacer').length;
+            document.getElementById('stat-progreso').textContent = tareas.filter(t => t.estado === 'En Progreso').length;
+            document.getElementById('stat-completado').textContent = tareas.filter(t => t.estado === 'Completado').length;
+        }
+
+        function mostrarToast(mensaje, tipo) {
+            const toast = document.getElementById('toast');
+            const toastMensaje = document.getElementById('toast-mensaje');
+            const config = window.elementSdk ? window.elementSdk.config : defaultConfig;
+            
+            toastMensaje.textContent = mensaje;
+            
+            if (tipo === 'success') {
+                toast.style.backgroundColor = '#10b981';
+                toast.style.color = 'white';
+            } else {
+                toast.style.backgroundColor = '#ef4444';
+                toast.style.color = 'white';
+            }
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        inicializarApp();
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b967da9a120b6ac',t:'MTc2NzY1Mjk2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
