@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión de Proyectos Ágiles</title>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .task-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 4px solid;
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .priority-alta {
+            border-left-color: #ef4444;
+        }
+
+        .priority-media {
+            border-left-color: #f59e0b;
+        }
+
+        .priority-baja {
+            border-left-color: #10b981;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            transition: width 0.5s ease-out;
+            border-radius: 4px;
+        }
+
+        .filter-btn {
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.05);
+        }
+
+        .input-field {
+            transition: all 0.2s ease;
+        }
+
+        .input-field:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .delete-confirm {
+            display: none;
+        }
+
+        .delete-confirm.active {
+            display: inline-flex;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            animation: slideInRight 0.3s ease-out;
+            display: none;
+        }
+
+        .toast.active {
+            display: block;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            opacity: 0.5;
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full bg-gray-50">
+  <div id="app" class="h-full w-full overflow-auto"><!-- Header -->
+   <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+     <div class="flex justify-between items-center">
+      <div>
+       <h1 id="titulo-principal" class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Sistema de Gestión de Proyectos</h1>
+       <p id="subtitulo" class="text-gray-600 mt-1">Ingeniería en Ciencia de Datos e IA</p>
+      </div><button id="btn-nueva-tarea" class="btn-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2">
+       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+       </svg><span id="texto-boton">Nueva Tarea</span> </button>
+     </div>
+    </div>
+   </header><!-- Estadísticas -->
+   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+     <div class="stat-card">
+      <div class="text-sm font-medium opacity-90">
+       Total Tareas
+      </div>
+      <div id="stat-total" class="text-3xl font-bold mt-2">
+       0
+      </div>
+     </div>
+     <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+      <div class="text-sm font-medium opacity-90">
+       En Progreso
+      </div>
+      <div id="stat-progreso" class="text-3xl font-bold mt-2">
+       0
+      </div>
+     </div>
+     <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+      <div class="text-sm font-medium opacity-90">
+       Completadas
+      </div>
+      <div id="stat-completadas" class="text-3xl font-bold mt-2">
+       0
+      </div>
+     </div>
+     <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+      <div class="text-sm font-medium opacity-90">
+       Progreso General
+      </div>
+      <div id="stat-progreso-general" class="text-3xl font-bold mt-2">
+       0%
+      </div>
+     </div>
+    </div>
+   </section><!-- Filtros -->
+   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div class="bg-white rounded-lg shadow-sm p-4">
+     <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold text-gray-900">Filtros y Acciones</h3>
+      <div class="flex gap-2"><button id="btn-exportar" class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg> Exportar </button> <button id="btn-limpiar-filtros" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg> Limpiar </button>
+      </div>
+     </div>
+     <div class="flex flex-wrap gap-3"><button class="filter-btn active px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="todas"> 📋 Todas </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="pendiente"> ⏳ Pendientes </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="en-progreso"> 🚀 En Progreso </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="completada"> ✅ Completadas </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="alta"> 🔥 Alta Prioridad </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="desarrollo"> 💻 Desarrollo </button> <button class="filter-btn px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100" data-filter="analisis"> 📊 Análisis </button>
+     </div>
+    </div>
+   </section><!-- Lista de Tareas -->
+   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+    <div id="tareas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><!-- Las tareas se cargarán dinámicamente -->
+    </div>
+   </section><!-- Modal Nueva Tarea -->
+   <div id="modal-tarea" class="modal">
+    <div class="modal-content">
+     <div class="p-6 border-b border-gray-200">
+      <div class="flex justify-between items-center">
+       <h2 id="modal-titulo" class="text-2xl font-bold text-gray-900">Nueva Tarea</h2><button id="btn-cerrar-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg></button>
+      </div>
+     </div>
+     <form id="form-tarea" class="p-6 space-y-4">
+      <div><label for="input-titulo" class="block text-sm font-semibold text-gray-700 mb-2">Título de la Tarea</label> <input type="text" id="input-titulo" required class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="Ej: Implementar modelo de ML">
+      </div>
+      <div><label for="input-descripcion" class="block text-sm font-semibold text-gray-700 mb-2">Descripción</label> <textarea id="input-descripcion" rows="3" class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none" placeholder="Describe los detalles de la tarea..."></textarea>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label for="input-proyecto" class="block text-sm font-semibold text-gray-700 mb-2">Proyecto</label> <input type="text" id="input-proyecto" required class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="Nombre del proyecto">
+       </div>
+       <div><label for="input-asignado" class="block text-sm font-semibold text-gray-700 mb-2">Asignado a</label> <input type="text" id="input-asignado" required class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="Nombre del responsable">
+       </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label for="input-prioridad" class="block text-sm font-semibold text-gray-700 mb-2">Prioridad</label> <select id="input-prioridad" class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white"> <option value="baja">Baja</option> <option value="media" selected>Media</option> <option value="alta">Alta</option> </select>
+       </div>
+       <div><label for="input-tipo" class="block text-sm font-semibold text-gray-700 mb-2">Tipo</label> <select id="input-tipo" class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white"> <option value="desarrollo">Desarrollo</option> <option value="analisis">Análisis</option> <option value="investigacion">Investigación</option> <option value="documentacion">Documentación</option> </select>
+       </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label for="input-estado" class="block text-sm font-semibold text-gray-700 mb-2">Estado</label> <select id="input-estado" class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white"> <option value="pendiente" selected>Pendiente</option> <option value="en-progreso">En Progreso</option> <option value="completada">Completada</option> </select>
+       </div>
+       <div><label for="input-vencimiento" class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Vencimiento</label> <input type="date" id="input-vencimiento" required class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+       </div>
+      </div>
+      <div><label for="input-progreso" class="block text-sm font-semibold text-gray-700 mb-2"> Progreso: <span id="progreso-valor">0</span>% </label> <input type="range" id="input-progreso" min="0" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+      </div>
+      <div class="flex gap-3 pt-4"><button type="submit" id="btn-guardar" class="btn-primary flex-1 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"> <span id="btn-guardar-texto">Guardar Tarea</span> </button> <button type="button" id="btn-cancelar" class="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"> Cancelar </button>
+      </div>
+     </form>
+    </div>
+   </div><!-- Toast de Notificación -->
+   <div id="toast" class="toast">
+    <div class="flex items-center gap-3">
+     <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+      <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+     </div>
+     <p id="toast-mensaje" class="text-gray-900 font-medium">Operación exitosa</p>
+    </div>
+   </div>
+  </div>
+  <script>
+        // Configuración por defecto
+        const defaultConfig = {
+            titulo_principal: "Sistema de Gestión de Proyectos",
+            subtitulo: "Ingeniería en Ciencia de Datos e IA",
+            texto_boton_nueva_tarea: "Nueva Tarea"
+        };
+
+        // Variables globales
+        let tareas = [];
+        let filtroActual = "todas";
+        let tareaEditando = null;
+
+        // Handler de datos
+        const dataHandler = {
+            onDataChanged(data) {
+                tareas = data;
+                actualizarEstadisticas();
+                renderizarTareas();
+            }
+        };
+
+        // Función para actualizar configuración
+        async function onConfigChange(config) {
+            document.getElementById('titulo-principal').textContent = config.titulo_principal || defaultConfig.titulo_principal;
+            document.getElementById('subtitulo').textContent = config.subtitulo || defaultConfig.subtitulo;
+            document.getElementById('texto-boton').textContent = config.texto_boton_nueva_tarea || defaultConfig.texto_boton_nueva_tarea;
+        }
+
+        // Inicialización de SDKs
+        async function inicializarApp() {
+            try {
+                // Inicializar Element SDK
+                if (window.elementSdk) {
+                    window.elementSdk.init({
+                        defaultConfig,
+                        onConfigChange,
+                        mapToCapabilities: () => ({
+                            recolorables: [],
+                            borderables: [],
+                            fontEditable: undefined,
+                            fontSizeable: undefined
+                        }),
+                        mapToEditPanelValues: (config) => new Map([
+                            ["titulo_principal", config.titulo_principal || defaultConfig.titulo_principal],
+                            ["subtitulo", config.subtitulo || defaultConfig.subtitulo],
+                            ["texto_boton_nueva_tarea", config.texto_boton_nueva_tarea || defaultConfig.texto_boton_nueva_tarea]
+                        ])
+                    });
+
+                    await onConfigChange(window.elementSdk.config);
+                }
+
+                // Inicializar Data SDK
+                const initResult = await window.dataSdk.init(dataHandler);
+                if (!initResult.isOk) {
+                    console.error("Error al inicializar Data SDK");
+                    mostrarToast("Error al cargar los datos", "error");
+                }
+            } catch (error) {
+                console.error("Error en la inicialización:", error);
+            }
+        }
+
+        // Renderizar tareas
+        function renderizarTareas() {
+            const container = document.getElementById('tareas-container');
+            const tareasFiltradas = filtrarTareas();
+
+            if (tareasFiltradas.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <p class="text-xl font-semibold">No hay tareas para mostrar</p>
+                        <p class="text-sm mt-2">Crea tu primera tarea para comenzar</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tareasFiltradas.map(tarea => `
+                <div class="task-card priority-${tarea.prioridad} bg-white rounded-lg shadow-md p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">${tarea.titulo}</h3>
+                            <p class="text-sm text-gray-600">${tarea.proyecto}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${getEstadoClass(tarea.estado)}">
+                            ${getEstadoTexto(tarea.estado)}
+                        </span>
+                    </div>
+
+                    <p class="text-sm text-gray-700 mb-4 line-clamp-2">${tarea.descripcion || 'Sin descripción'}</p>
+
+                    <div class="space-y-3 mb-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Progreso</span>
+                            <span class="font-semibold text-gray-900">${tarea.progreso}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${tarea.progreso}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
+                        <div>
+                            <span class="text-gray-600 block">Asignado a</span>
+                            <span class="font-medium text-gray-900">${tarea.asignadoA}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600 block">Vencimiento</span>
+                            <span class="font-medium text-gray-900">${formatearFecha(tarea.fechaVencimiento)}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex gap-2">
+                            <button onclick="cambiarEstadoRapido('${tarea.__backendId}')" class="flex-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Avanzar
+                            </button>
+                            <button onclick="duplicarTarea('${tarea.__backendId}')" class="flex-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-1 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                Duplicar
+                            </button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="aumentarProgreso('${tarea.__backendId}')" class="flex-1 bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                +25%
+                            </button>
+                            <button onclick="editarTarea('${tarea.__backendId}')" class="flex-1 bg-purple-50 text-purple-700 px-3 py-2 rounded-lg font-medium hover:bg-purple-100 transition-colors flex items-center justify-center gap-1 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                                Editar
+                            </button>
+                            <button onclick="mostrarConfirmacionEliminar('${tarea.__backendId}')" class="bg-red-50 text-red-700 px-3 py-2 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-1 text-sm" data-delete-id="${tarea.__backendId}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Eliminar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="confirm-${tarea.__backendId}" class="delete-confirm mt-2 gap-2">
+                        <button onclick="eliminarTarea('${tarea.__backendId}')" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors">
+                            Confirmar
+                        </button>
+                        <button onclick="cancelarEliminar('${tarea.__backendId}')" class="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filtrar tareas
+        function filtrarTareas() {
+            if (filtroActual === "todas") return tareas;
+            if (filtroActual === "alta") return tareas.filter(t => t.prioridad === "alta");
+            if (filtroActual === "desarrollo" || filtroActual === "analisis" || filtroActual === "investigacion" || filtroActual === "documentacion") {
+                return tareas.filter(t => t.tipo === filtroActual);
+            }
+            return tareas.filter(t => t.estado === filtroActual);
+        }
+
+        // Cambiar estado de tarea rápidamente
+        async function cambiarEstadoRapido(backendId) {
+            const tarea = tareas.find(t => t.__backendId === backendId);
+            if (!tarea) return;
+
+            const estadosOrden = ["pendiente", "en-progreso", "completada"];
+            const indiceActual = estadosOrden.indexOf(tarea.estado);
+            const nuevoEstado = estadosOrden[(indiceActual + 1) % estadosOrden.length];
+
+            const result = await window.dataSdk.update({
+                ...tarea,
+                estado: nuevoEstado,
+                progreso: nuevoEstado === "completada" ? 100 : tarea.progreso
+            });
+
+            if (result.isOk) {
+                mostrarToast(`Estado cambiado a ${getEstadoTexto(nuevoEstado)}`);
+            } else {
+                mostrarToast("Error al cambiar el estado", "error");
+            }
+        }
+
+        // Duplicar tarea
+        async function duplicarTarea(backendId) {
+            if (tareas.length >= 999) {
+                mostrarToast("Límite de 999 tareas alcanzado", "error");
+                return;
+            }
+
+            const tarea = tareas.find(t => t.__backendId === backendId);
+            if (!tarea) return;
+
+            const tareaDuplicada = {
+                id: `tarea-${Date.now()}`,
+                titulo: `${tarea.titulo} (Copia)`,
+                descripcion: tarea.descripcion,
+                proyecto: tarea.proyecto,
+                asignadoA: tarea.asignadoA,
+                prioridad: tarea.prioridad,
+                tipo: tarea.tipo,
+                estado: "pendiente",
+                fechaVencimiento: tarea.fechaVencimiento,
+                progreso: 0,
+                fechaCreacion: new Date().toISOString()
+            };
+
+            const result = await window.dataSdk.create(tareaDuplicada);
+
+            if (result.isOk) {
+                mostrarToast("Tarea duplicada exitosamente");
+            } else {
+                mostrarToast("Error al duplicar la tarea", "error");
+            }
+        }
+
+        // Aumentar progreso
+        async function aumentarProgreso(backendId) {
+            const tarea = tareas.find(t => t.__backendId === backendId);
+            if (!tarea) return;
+
+            const nuevoProgreso = Math.min(tarea.progreso + 25, 100);
+            const nuevoEstado = nuevoProgreso === 100 ? "completada" : tarea.estado === "pendiente" ? "en-progreso" : tarea.estado;
+
+            const result = await window.dataSdk.update({
+                ...tarea,
+                progreso: nuevoProgreso,
+                estado: nuevoEstado
+            });
+
+            if (result.isOk) {
+                mostrarToast(`Progreso actualizado a ${nuevoProgreso}%`);
+            } else {
+                mostrarToast("Error al actualizar el progreso", "error");
+            }
+        }
+
+        // Exportar tareas a CSV
+        function exportarTareas() {
+            if (tareas.length === 0) {
+                mostrarToast("No hay tareas para exportar", "error");
+                return;
+            }
+
+            const csv = [
+                ["ID", "Título", "Descripción", "Proyecto", "Asignado a", "Prioridad", "Estado", "Tipo", "Progreso", "Fecha Creación", "Fecha Vencimiento"].join(","),
+                ...tareas.map(t => [
+                    t.id,
+                    `"${t.titulo}"`,
+                    `"${t.descripcion || ''}"`,
+                    `"${t.proyecto}"`,
+                    `"${t.asignadoA}"`,
+                    t.prioridad,
+                    t.estado,
+                    t.tipo,
+                    t.progreso,
+                    t.fechaCreacion,
+                    t.fechaVencimiento
+                ].join(","))
+            ].join("\n");
+
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `tareas_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            mostrarToast("Tareas exportadas exitosamente");
+        }
+
+        // Limpiar filtros
+        function limpiarFiltros() {
+            filtroActual = "todas";
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-filter="todas"]').classList.add('active');
+            renderizarTareas();
+            mostrarToast("Filtros limpiados");
+        }
+
+        // Actualizar estadísticas
+        function actualizarEstadisticas() {
+            document.getElementById('stat-total').textContent = tareas.length;
+            document.getElementById('stat-progreso').textContent = tareas.filter(t => t.estado === "en-progreso").length;
+            document.getElementById('stat-completadas').textContent = tareas.filter(t => t.estado === "completada").length;
+            
+            const progresoTotal = tareas.length > 0 
+                ? Math.round(tareas.reduce((acc, t) => acc + t.progreso, 0) / tareas.length)
+                : 0;
+            document.getElementById('stat-progreso-general').textContent = `${progresoTotal}%`;
+        }
+
+        // Utilidades de formato
+        function getEstadoClass(estado) {
+            const clases = {
+                'pendiente': 'bg-yellow-100 text-yellow-800',
+                'en-progreso': 'bg-blue-100 text-blue-800',
+                'completada': 'bg-green-100 text-green-800'
+            };
+            return clases[estado] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getEstadoTexto(estado) {
+            const textos = {
+                'pendiente': 'Pendiente',
+                'en-progreso': 'En Progreso',
+                'completada': 'Completada'
+            };
+            return textos[estado] || estado;
+        }
+
+        function formatearFecha(fecha) {
+            const date = new Date(fecha);
+            return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        }
+
+        // Mostrar/ocultar modal
+        function mostrarModal() {
+            document.getElementById('modal-tarea').classList.add('active');
+            document.getElementById('modal-titulo').textContent = tareaEditando ? 'Editar Tarea' : 'Nueva Tarea';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-tarea').classList.remove('active');
+            document.getElementById('form-tarea').reset();
+            document.getElementById('progreso-valor').textContent = '0';
+            tareaEditando = null;
+        }
+
+        // Crear o actualizar tarea
+        async function guardarTarea(e) {
+            e.preventDefault();
+
+            const btnGuardar = document.getElementById('btn-guardar');
+            const btnTexto = document.getElementById('btn-guardar-texto');
+            
+            btnGuardar.disabled = true;
+            btnTexto.innerHTML = '<div class="loading-spinner"></div>';
+
+            const tareaNueva = {
+                id: tareaEditando ? tareaEditando.id : `tarea-${Date.now()}`,
+                titulo: document.getElementById('input-titulo').value,
+                descripcion: document.getElementById('input-descripcion').value,
+                proyecto: document.getElementById('input-proyecto').value,
+                asignadoA: document.getElementById('input-asignado').value,
+                prioridad: document.getElementById('input-prioridad').value,
+                tipo: document.getElementById('input-tipo').value,
+                estado: document.getElementById('input-estado').value,
+                fechaVencimiento: document.getElementById('input-vencimiento').value,
+                progreso: parseInt(document.getElementById('input-progreso').value),
+                fechaCreacion: tareaEditando ? tareaEditando.fechaCreacion : new Date().toISOString()
+            };
+
+            try {
+                if (tareaEditando) {
+                    const result = await window.dataSdk.update({
+                        ...tareaNueva,
+                        __backendId: tareaEditando.__backendId
+                    });
+
+                    if (result.isOk) {
+                        mostrarToast("Tarea actualizada exitosamente");
+                        cerrarModal();
+                    } else {
+                        mostrarToast("Error al actualizar la tarea", "error");
+                    }
+                } else {
+                    if (tareas.length >= 999) {
+                        mostrarToast("Límite de 999 tareas alcanzado. Por favor, elimina algunas tareas primero.", "error");
+                        btnGuardar.disabled = false;
+                        btnTexto.textContent = "Guardar Tarea";
+                        return;
+                    }
+
+                    const result = await window.dataSdk.create(tareaNueva);
+
+                    if (result.isOk) {
+                        mostrarToast("Tarea creada exitosamente");
+                        cerrarModal();
+                    } else {
+                        mostrarToast("Error al crear la tarea", "error");
+                    }
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                mostrarToast("Error al procesar la tarea", "error");
+            }
+
+            btnGuardar.disabled = false;
+            btnTexto.textContent = "Guardar Tarea";
+        }
+
+        // Editar tarea
+        function editarTarea(backendId) {
+            tareaEditando = tareas.find(t => t.__backendId === backendId);
+            if (!tareaEditando) return;
+
+            document.getElementById('input-titulo').value = tareaEditando.titulo;
+            document.getElementById('input-descripcion').value = tareaEditando.descripcion || '';
+            document.getElementById('input-proyecto').value = tareaEditando.proyecto;
+            document.getElementById('input-asignado').value = tareaEditando.asignadoA;
+            document.getElementById('input-prioridad').value = tareaEditando.prioridad;
+            document.getElementById('input-tipo').value = tareaEditando.tipo;
+            document.getElementById('input-estado').value = tareaEditando.estado;
+            document.getElementById('input-vencimiento').value = tareaEditando.fechaVencimiento;
+            document.getElementById('input-progreso').value = tareaEditando.progreso;
+            document.getElementById('progreso-valor').textContent = tareaEditando.progreso;
+
+            mostrarModal();
+        }
+
+        // Confirmación de eliminación
+        function mostrarConfirmacionEliminar(backendId) {
+            const confirmDiv = document.getElementById(`confirm-${backendId}`);
+            confirmDiv.classList.add('active');
+        }
+
+        function cancelarEliminar(backendId) {
+            const confirmDiv = document.getElementById(`confirm-${backendId}`);
+            confirmDiv.classList.remove('active');
+        }
+
+        // Eliminar tarea
+        async function eliminarTarea(backendId) {
+            const tarea = tareas.find(t => t.__backendId === backendId);
+            if (!tarea) return;
+
+            const result = await window.dataSdk.delete(tarea);
+
+            if (result.isOk) {
+                mostrarToast("Tarea eliminada exitosamente");
+            } else {
+                mostrarToast("Error al eliminar la tarea", "error");
+            }
+        }
+
+        // Toast de notificación
+        function mostrarToast(mensaje, tipo = "success") {
+            const toast = document.getElementById('toast');
+            const toastMensaje = document.getElementById('toast-mensaje');
+            
+            toastMensaje.textContent = mensaje;
+            toast.classList.add('active');
+
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // Event Listeners
+        document.getElementById('btn-nueva-tarea').addEventListener('click', mostrarModal);
+        document.getElementById('btn-cerrar-modal').addEventListener('click', cerrarModal);
+        document.getElementById('btn-cancelar').addEventListener('click', cerrarModal);
+        document.getElementById('form-tarea').addEventListener('submit', guardarTarea);
+        document.getElementById('btn-exportar').addEventListener('click', exportarTareas);
+        document.getElementById('btn-limpiar-filtros').addEventListener('click', limpiarFiltros);
+
+        // Actualizar valor de progreso
+        document.getElementById('input-progreso').addEventListener('input', (e) => {
+            document.getElementById('progreso-valor').textContent = e.target.value;
+        });
+
+        // Filtros
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filtroActual = btn.dataset.filter;
+                renderizarTareas();
+            });
+        });
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modal-tarea').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-tarea') {
+                cerrarModal();
+            }
+        });
+
+        // Inicializar la aplicación
+        inicializarApp();
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b96d9a5f347b6ac',t:'MTc2NzY1NjczNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
